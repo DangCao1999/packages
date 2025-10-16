@@ -134,6 +134,8 @@ class GoogleMap extends StatefulWidget {
     this.onTap,
     this.onLongPress,
     this.cloudMapId,
+    this.markerType = MarkerType.advancedMarker,
+    this.mapId,
   });
 
   /// Callback method for when the map is ready to be used.
@@ -372,6 +374,10 @@ class GoogleMap extends StatefulWidget {
   /// See https://developers.google.com/maps/documentation/get-map-id
   /// for more details.
   final String? cloudMapId;
+
+  final MarkerType markerType;
+
+  final String? mapId;
 
   /// Creates a [State] for this [GoogleMap].
   @override
@@ -701,6 +707,7 @@ class _GoogleMapState extends State<GoogleMap> {
 /// Builds a [MapConfiguration] from the given [map].
 MapConfiguration _configurationFromMapWidget(GoogleMap map) {
   return MapConfiguration(
+    mapId: map.mapId,
     webCameraControlPosition: map.webCameraControlPosition,
     webCameraControlEnabled: map.webCameraControlEnabled,
     webGestureHandling: map.webGestureHandling,
@@ -727,5 +734,6 @@ MapConfiguration _configurationFromMapWidget(GoogleMap map) {
     // A null style in the widget means no style, which is expressed as '' in
     // the configuration to distinguish from no change (null).
     style: map.style ?? '',
+    markerType: map.markerType,
   );
 }
