@@ -12,6 +12,8 @@ import 'advanced_marker_icons.dart';
 import 'advanced_markers_clustering.dart';
 import 'animate_camera.dart';
 import 'clustering.dart';
+import 'collision_behavior.dart';
+import 'ground_overlay.dart';
 import 'heatmap.dart';
 import 'lite_mode.dart';
 import 'map_click.dart';
@@ -53,10 +55,12 @@ final List<GoogleMapExampleAppPage> _allPages = <GoogleMapExampleAppPage>[
   const SnapshotPage(),
   const LiteModePage(),
   const TileOverlayPage(),
+  const GroundOverlayPage(),
   const ClusteringPage(),
   const AdvancedMarkersClustering(mapId: _mapId),
   const MapIdPage(),
   const HeatmapPage(),
+  const AdvancedMarkerCollisionBehaviorPage(mapId: _mapId),
 ];
 
 /// MapsDemo is the Main Application.

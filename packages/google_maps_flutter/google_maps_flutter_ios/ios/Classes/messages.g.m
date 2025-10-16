@@ -50,8 +50,8 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
 }
 @end
 
-@implementation FGMMarkerCollisionBehaviorBox
-- (instancetype)initWithValue:(FGMMarkerCollisionBehavior)value {
+@implementation FGMPlatformMarkerCollisionBehaviorBox
+- (instancetype)initWithValue:(FGMPlatformMarkerCollisionBehavior)value {
   self = [super init];
   if (self) {
     _value = value;
@@ -250,6 +250,12 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
 @interface FGMPlatformCameraTargetBounds ()
 + (FGMPlatformCameraTargetBounds *)fromList:(NSArray<id> *)list;
 + (nullable FGMPlatformCameraTargetBounds *)nullableFromList:(NSArray<id> *)list;
+- (NSArray<id> *)toList;
+@end
+
+@interface FGMPlatformGroundOverlay ()
++ (FGMPlatformGroundOverlay *)fromList:(NSArray<id> *)list;
++ (nullable FGMPlatformGroundOverlay *)nullableFromList:(NSArray<id> *)list;
 - (NSArray<id> *)toList;
 @end
 
@@ -748,7 +754,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
                        zIndex:(double)zIndex
                      markerId:(NSString *)markerId
              clusterManagerId:(nullable NSString *)clusterManagerId
-            collisionBehavior:(nullable FGMMarkerCollisionBehaviorBox *)collisionBehavior {
+            collisionBehavior:(nullable FGMPlatformMarkerCollisionBehaviorBox *)collisionBehavior {
   FGMPlatformMarker *pigeonResult = [[FGMPlatformMarker alloc] init];
   pigeonResult.alpha = alpha;
   pigeonResult.anchor = anchor;
@@ -1121,6 +1127,67 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
 }
 @end
 
+@implementation FGMPlatformGroundOverlay
++ (instancetype)makeWithGroundOverlayId:(NSString *)groundOverlayId
+                                  image:(FGMPlatformBitmap *)image
+                               position:(nullable FGMPlatformLatLng *)position
+                                 bounds:(nullable FGMPlatformLatLngBounds *)bounds
+                                 anchor:(nullable FGMPlatformPoint *)anchor
+                           transparency:(double)transparency
+                                bearing:(double)bearing
+                                 zIndex:(NSInteger)zIndex
+                                visible:(BOOL)visible
+                              clickable:(BOOL)clickable
+                              zoomLevel:(nullable NSNumber *)zoomLevel {
+  FGMPlatformGroundOverlay *pigeonResult = [[FGMPlatformGroundOverlay alloc] init];
+  pigeonResult.groundOverlayId = groundOverlayId;
+  pigeonResult.image = image;
+  pigeonResult.position = position;
+  pigeonResult.bounds = bounds;
+  pigeonResult.anchor = anchor;
+  pigeonResult.transparency = transparency;
+  pigeonResult.bearing = bearing;
+  pigeonResult.zIndex = zIndex;
+  pigeonResult.visible = visible;
+  pigeonResult.clickable = clickable;
+  pigeonResult.zoomLevel = zoomLevel;
+  return pigeonResult;
+}
++ (FGMPlatformGroundOverlay *)fromList:(NSArray<id> *)list {
+  FGMPlatformGroundOverlay *pigeonResult = [[FGMPlatformGroundOverlay alloc] init];
+  pigeonResult.groundOverlayId = GetNullableObjectAtIndex(list, 0);
+  pigeonResult.image = GetNullableObjectAtIndex(list, 1);
+  pigeonResult.position = GetNullableObjectAtIndex(list, 2);
+  pigeonResult.bounds = GetNullableObjectAtIndex(list, 3);
+  pigeonResult.anchor = GetNullableObjectAtIndex(list, 4);
+  pigeonResult.transparency = [GetNullableObjectAtIndex(list, 5) doubleValue];
+  pigeonResult.bearing = [GetNullableObjectAtIndex(list, 6) doubleValue];
+  pigeonResult.zIndex = [GetNullableObjectAtIndex(list, 7) integerValue];
+  pigeonResult.visible = [GetNullableObjectAtIndex(list, 8) boolValue];
+  pigeonResult.clickable = [GetNullableObjectAtIndex(list, 9) boolValue];
+  pigeonResult.zoomLevel = GetNullableObjectAtIndex(list, 10);
+  return pigeonResult;
+}
++ (nullable FGMPlatformGroundOverlay *)nullableFromList:(NSArray<id> *)list {
+  return (list) ? [FGMPlatformGroundOverlay fromList:list] : nil;
+}
+- (NSArray<id> *)toList {
+  return @[
+    self.groundOverlayId ?: [NSNull null],
+    self.image ?: [NSNull null],
+    self.position ?: [NSNull null],
+    self.bounds ?: [NSNull null],
+    self.anchor ?: [NSNull null],
+    @(self.transparency),
+    @(self.bearing),
+    @(self.zIndex),
+    @(self.visible),
+    @(self.clickable),
+    self.zoomLevel ?: [NSNull null],
+  ];
+}
+@end
+
 @implementation FGMPlatformMapViewCreationParams
 + (instancetype)
     makeWithInitialCameraPosition:(FGMPlatformCameraPosition *)initialCameraPosition
@@ -1131,7 +1198,8 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
                  initialPolylines:(NSArray<FGMPlatformPolyline *> *)initialPolylines
                   initialHeatmaps:(NSArray<FGMPlatformHeatmap *> *)initialHeatmaps
               initialTileOverlays:(NSArray<FGMPlatformTileOverlay *> *)initialTileOverlays
-           initialClusterManagers:(NSArray<FGMPlatformClusterManager *> *)initialClusterManagers {
+           initialClusterManagers:(NSArray<FGMPlatformClusterManager *> *)initialClusterManagers
+            initialGroundOverlays:(NSArray<FGMPlatformGroundOverlay *> *)initialGroundOverlays {
   FGMPlatformMapViewCreationParams *pigeonResult = [[FGMPlatformMapViewCreationParams alloc] init];
   pigeonResult.initialCameraPosition = initialCameraPosition;
   pigeonResult.mapConfiguration = mapConfiguration;
@@ -1142,6 +1210,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
   pigeonResult.initialHeatmaps = initialHeatmaps;
   pigeonResult.initialTileOverlays = initialTileOverlays;
   pigeonResult.initialClusterManagers = initialClusterManagers;
+  pigeonResult.initialGroundOverlays = initialGroundOverlays;
   return pigeonResult;
 }
 + (FGMPlatformMapViewCreationParams *)fromList:(NSArray<id> *)list {
@@ -1155,6 +1224,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
   pigeonResult.initialHeatmaps = GetNullableObjectAtIndex(list, 6);
   pigeonResult.initialTileOverlays = GetNullableObjectAtIndex(list, 7);
   pigeonResult.initialClusterManagers = GetNullableObjectAtIndex(list, 8);
+  pigeonResult.initialGroundOverlays = GetNullableObjectAtIndex(list, 9);
   return pigeonResult;
 }
 + (nullable FGMPlatformMapViewCreationParams *)nullableFromList:(NSArray<id> *)list {
@@ -1171,6 +1241,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     self.initialHeatmaps ?: [NSNull null],
     self.initialTileOverlays ?: [NSNull null],
     self.initialClusterManagers ?: [NSNull null],
+    self.initialGroundOverlays ?: [NSNull null],
   ];
 }
 @end
@@ -1622,7 +1693,7 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     case 130: {
       NSNumber *enumAsNumber = [self readValue];
       return enumAsNumber == nil ? nil
-                                 : [[FGMMarkerCollisionBehaviorBox alloc]
+                                 : [[FGMPlatformMarkerCollisionBehaviorBox alloc]
                                        initWithValue:[enumAsNumber integerValue]];
     }
     case 131: {
@@ -1700,32 +1771,34 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     case 159:
       return [FGMPlatformCameraTargetBounds fromList:[self readValue]];
     case 160:
-      return [FGMPlatformMapViewCreationParams fromList:[self readValue]];
+      return [FGMPlatformGroundOverlay fromList:[self readValue]];
     case 161:
-      return [FGMPlatformMapConfiguration fromList:[self readValue]];
+      return [FGMPlatformMapViewCreationParams fromList:[self readValue]];
     case 162:
-      return [FGMPlatformPoint fromList:[self readValue]];
+      return [FGMPlatformMapConfiguration fromList:[self readValue]];
     case 163:
-      return [FGMPlatformSize fromList:[self readValue]];
+      return [FGMPlatformPoint fromList:[self readValue]];
     case 164:
-      return [FGMPlatformTileLayer fromList:[self readValue]];
+      return [FGMPlatformSize fromList:[self readValue]];
     case 165:
-      return [FGMPlatformZoomRange fromList:[self readValue]];
+      return [FGMPlatformTileLayer fromList:[self readValue]];
     case 166:
-      return [FGMPlatformBitmap fromList:[self readValue]];
+      return [FGMPlatformZoomRange fromList:[self readValue]];
     case 167:
-      return [FGMPlatformBitmapDefaultMarker fromList:[self readValue]];
+      return [FGMPlatformBitmap fromList:[self readValue]];
     case 168:
-      return [FGMPlatformBitmapBytes fromList:[self readValue]];
+      return [FGMPlatformBitmapDefaultMarker fromList:[self readValue]];
     case 169:
-      return [FGMPlatformBitmapAsset fromList:[self readValue]];
+      return [FGMPlatformBitmapBytes fromList:[self readValue]];
     case 170:
-      return [FGMPlatformBitmapAssetImage fromList:[self readValue]];
+      return [FGMPlatformBitmapAsset fromList:[self readValue]];
     case 171:
-      return [FGMPlatformBitmapAssetMap fromList:[self readValue]];
+      return [FGMPlatformBitmapAssetImage fromList:[self readValue]];
     case 172:
-      return [FGMPlatformBitmapBytesMap fromList:[self readValue]];
+      return [FGMPlatformBitmapAssetMap fromList:[self readValue]];
     case 173:
+      return [FGMPlatformBitmapBytesMap fromList:[self readValue]];
+    case 174:
       return [FGMPlatformBitmapPinConfig fromList:[self readValue]];
     default:
       return [super readValueOfType:type];
@@ -1741,8 +1814,8 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
     FGMPlatformMapTypeBox *box = (FGMPlatformMapTypeBox *)value;
     [self writeByte:129];
     [self writeValue:(value == nil ? [NSNull null] : [NSNumber numberWithInteger:box.value])];
-  } else if ([value isKindOfClass:[FGMMarkerCollisionBehaviorBox class]]) {
-    FGMMarkerCollisionBehaviorBox *box = (FGMMarkerCollisionBehaviorBox *)value;
+  } else if ([value isKindOfClass:[FGMPlatformMarkerCollisionBehaviorBox class]]) {
+    FGMPlatformMarkerCollisionBehaviorBox *box = (FGMPlatformMarkerCollisionBehaviorBox *)value;
     [self writeByte:130];
     [self writeValue:(value == nil ? [NSNull null] : [NSNumber numberWithInteger:box.value])];
   } else if ([value isKindOfClass:[FGMPlatformJointTypeBox class]]) {
@@ -1836,47 +1909,50 @@ static id GetNullableObjectAtIndex(NSArray<id> *array, NSInteger key) {
   } else if ([value isKindOfClass:[FGMPlatformCameraTargetBounds class]]) {
     [self writeByte:159];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformMapViewCreationParams class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformGroundOverlay class]]) {
     [self writeByte:160];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformMapConfiguration class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformMapViewCreationParams class]]) {
     [self writeByte:161];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformPoint class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformMapConfiguration class]]) {
     [self writeByte:162];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformSize class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformPoint class]]) {
     [self writeByte:163];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformTileLayer class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformSize class]]) {
     [self writeByte:164];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformZoomRange class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformTileLayer class]]) {
     [self writeByte:165];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformBitmap class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformZoomRange class]]) {
     [self writeByte:166];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformBitmapDefaultMarker class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformBitmap class]]) {
     [self writeByte:167];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformBitmapBytes class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformBitmapDefaultMarker class]]) {
     [self writeByte:168];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformBitmapAsset class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformBitmapBytes class]]) {
     [self writeByte:169];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformBitmapAssetImage class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformBitmapAsset class]]) {
     [self writeByte:170];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformBitmapAssetMap class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformBitmapAssetImage class]]) {
     [self writeByte:171];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformBitmapBytesMap class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformBitmapAssetMap class]]) {
     [self writeByte:172];
     [self writeValue:[value toList]];
-  } else if ([value isKindOfClass:[FGMPlatformBitmapPinConfig class]]) {
+  } else if ([value isKindOfClass:[FGMPlatformBitmapBytesMap class]]) {
     [self writeByte:173];
+    [self writeValue:[value toList]];
+  } else if ([value isKindOfClass:[FGMPlatformBitmapPinConfig class]]) {
+    [self writeByte:174];
     [self writeValue:[value toList]];
   } else {
     [super writeValue:value];
@@ -2174,6 +2250,37 @@ void SetUpFGMMapsApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger,
       [channel setMessageHandler:nil];
     }
   }
+  /// Updates the set of ground overlays on the map.
+  {
+    FlutterBasicMessageChannel *channel = [[FlutterBasicMessageChannel alloc]
+           initWithName:[NSString stringWithFormat:@"%@%@",
+                                                   @"dev.flutter.pigeon.google_maps_flutter_ios."
+                                                   @"MapsApi.updateGroundOverlays",
+                                                   messageChannelSuffix]
+        binaryMessenger:binaryMessenger
+                  codec:FGMGetMessagesCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(updateGroundOverlaysByAdding:
+                                                                      changing:removing:error:)],
+                @"FGMMapsApi api (%@) doesn't respond to "
+                @"@selector(updateGroundOverlaysByAdding:changing:removing:error:)",
+                api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        NSArray<id> *args = message;
+        NSArray<FGMPlatformGroundOverlay *> *arg_toAdd = GetNullableObjectAtIndex(args, 0);
+        NSArray<FGMPlatformGroundOverlay *> *arg_toChange = GetNullableObjectAtIndex(args, 1);
+        NSArray<NSString *> *arg_idsToRemove = GetNullableObjectAtIndex(args, 2);
+        FlutterError *error;
+        [api updateGroundOverlaysByAdding:arg_toAdd
+                                 changing:arg_toChange
+                                 removing:arg_idsToRemove
+                                    error:&error];
+        callback(wrapResult(nil, error));
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
   /// Gets the screen coordinate for the given map location.
   {
     FlutterBasicMessageChannel *channel = [[FlutterBasicMessageChannel alloc]
@@ -2273,7 +2380,8 @@ void SetUpFGMMapsApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger,
       [channel setMessageHandler:nil];
     }
   }
-  /// Moves the camera according to [cameraUpdate], animating the update.
+  /// Moves the camera according to [cameraUpdate], animating the update using a
+  /// duration in milliseconds if provided.
   {
     FlutterBasicMessageChannel *channel = [[FlutterBasicMessageChannel alloc]
            initWithName:[NSString
@@ -2284,14 +2392,18 @@ void SetUpFGMMapsApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger,
         binaryMessenger:binaryMessenger
                   codec:FGMGetMessagesCodec()];
     if (api) {
-      NSCAssert([api respondsToSelector:@selector(animateCameraWithUpdate:error:)],
-                @"FGMMapsApi api (%@) doesn't respond to @selector(animateCameraWithUpdate:error:)",
+      NSCAssert([api respondsToSelector:@selector(animateCameraWithUpdate:duration:error:)],
+                @"FGMMapsApi api (%@) doesn't respond to "
+                @"@selector(animateCameraWithUpdate:duration:error:)",
                 api);
       [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
         NSArray<id> *args = message;
         FGMPlatformCameraUpdate *arg_cameraUpdate = GetNullableObjectAtIndex(args, 0);
+        NSNumber *arg_durationMilliseconds = GetNullableObjectAtIndex(args, 1);
         FlutterError *error;
-        [api animateCameraWithUpdate:arg_cameraUpdate error:&error];
+        [api animateCameraWithUpdate:arg_cameraUpdate
+                            duration:arg_durationMilliseconds
+                               error:&error];
         callback(wrapResult(nil, error));
       }];
     } else {
@@ -2498,7 +2610,7 @@ void SetUpFGMMapsApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger,
       [channel setMessageHandler:nil];
     }
   }
-  /// Returns true if the map supports advanced markers
+  /// Returns true if the map supports advanced markers.
   {
     FlutterBasicMessageChannel *channel = [[FlutterBasicMessageChannel alloc]
            initWithName:[NSString stringWithFormat:@"%@%@",
@@ -2893,6 +3005,31 @@ void SetUpFGMMapsApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger,
                    }
                  }];
 }
+- (void)didTapGroundOverlayWithIdentifier:(NSString *)arg_groundOverlayId
+                               completion:(void (^)(FlutterError *_Nullable))completion {
+  NSString *channelName = [NSString
+      stringWithFormat:
+          @"%@%@", @"dev.flutter.pigeon.google_maps_flutter_ios.MapsCallbackApi.onGroundOverlayTap",
+          _messageChannelSuffix];
+  FlutterBasicMessageChannel *channel =
+      [FlutterBasicMessageChannel messageChannelWithName:channelName
+                                         binaryMessenger:self.binaryMessenger
+                                                   codec:FGMGetMessagesCodec()];
+  [channel sendMessage:@[ arg_groundOverlayId ?: [NSNull null] ]
+                 reply:^(NSArray<id> *reply) {
+                   if (reply != nil) {
+                     if (reply.count > 1) {
+                       completion([FlutterError errorWithCode:reply[0]
+                                                      message:reply[1]
+                                                      details:reply[2]]);
+                     } else {
+                       completion(nil);
+                     }
+                   } else {
+                     completion(createConnectionError(channelName));
+                   }
+                 }];
+}
 - (void)tileWithOverlayIdentifier:(NSString *)arg_tileOverlayId
                          location:(FGMPlatformPoint *)arg_location
                              zoom:(NSInteger)arg_zoom
@@ -3178,6 +3315,31 @@ void SetUpFGMMapsInspectorApiWithSuffix(id<FlutterBinaryMessenger> binaryMesseng
     FlutterBasicMessageChannel *channel = [[FlutterBasicMessageChannel alloc]
            initWithName:[NSString stringWithFormat:@"%@%@",
                                                    @"dev.flutter.pigeon.google_maps_flutter_ios."
+                                                   @"MapsInspectorApi.getGroundOverlayInfo",
+                                                   messageChannelSuffix]
+        binaryMessenger:binaryMessenger
+                  codec:FGMGetMessagesCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(groundOverlayWithIdentifier:error:)],
+                @"FGMMapsInspectorApi api (%@) doesn't respond to "
+                @"@selector(groundOverlayWithIdentifier:error:)",
+                api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        NSArray<id> *args = message;
+        NSString *arg_groundOverlayId = GetNullableObjectAtIndex(args, 0);
+        FlutterError *error;
+        FGMPlatformGroundOverlay *output = [api groundOverlayWithIdentifier:arg_groundOverlayId
+                                                                      error:&error];
+        callback(wrapResult(output, error));
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
+  {
+    FlutterBasicMessageChannel *channel = [[FlutterBasicMessageChannel alloc]
+           initWithName:[NSString stringWithFormat:@"%@%@",
+                                                   @"dev.flutter.pigeon.google_maps_flutter_ios."
                                                    @"MapsInspectorApi.getHeatmapInfo",
                                                    messageChannelSuffix]
         binaryMessenger:binaryMessenger
@@ -3237,6 +3399,26 @@ void SetUpFGMMapsInspectorApiWithSuffix(id<FlutterBinaryMessenger> binaryMesseng
         FlutterError *error;
         NSArray<FGMPlatformCluster *> *output = [api clustersWithIdentifier:arg_clusterManagerId
                                                                       error:&error];
+        callback(wrapResult(output, error));
+      }];
+    } else {
+      [channel setMessageHandler:nil];
+    }
+  }
+  {
+    FlutterBasicMessageChannel *channel = [[FlutterBasicMessageChannel alloc]
+           initWithName:[NSString stringWithFormat:@"%@%@",
+                                                   @"dev.flutter.pigeon.google_maps_flutter_ios."
+                                                   @"MapsInspectorApi.getCameraPosition",
+                                                   messageChannelSuffix]
+        binaryMessenger:binaryMessenger
+                  codec:FGMGetMessagesCodec()];
+    if (api) {
+      NSCAssert([api respondsToSelector:@selector(cameraPosition:)],
+                @"FGMMapsInspectorApi api (%@) doesn't respond to @selector(cameraPosition:)", api);
+      [channel setMessageHandler:^(id _Nullable message, FlutterReply callback) {
+        FlutterError *error;
+        FGMPlatformCameraPosition *output = [api cameraPosition:&error];
         callback(wrapResult(output, error));
       }];
     } else {

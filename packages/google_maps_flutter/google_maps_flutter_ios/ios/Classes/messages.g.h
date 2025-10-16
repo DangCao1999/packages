@@ -28,16 +28,16 @@ typedef NS_ENUM(NSUInteger, FGMPlatformMapType) {
 - (instancetype)initWithValue:(FGMPlatformMapType)value;
 @end
 
-typedef NS_ENUM(NSUInteger, FGMMarkerCollisionBehavior) {
-  FGMMarkerCollisionBehaviorRequired = 0,
-  FGMMarkerCollisionBehaviorOptionalAndHidesLowerPriority = 1,
-  FGMMarkerCollisionBehaviorRequiredAndHidesOptional = 2,
+typedef NS_ENUM(NSUInteger, FGMPlatformMarkerCollisionBehavior) {
+  FGMPlatformMarkerCollisionBehaviorRequiredDisplay = 0,
+  FGMPlatformMarkerCollisionBehaviorOptionalAndHidesLowerPriority = 1,
+  FGMPlatformMarkerCollisionBehaviorRequiredAndHidesOptional = 2,
 };
 
-/// Wrapper for FGMMarkerCollisionBehavior to allow for nullability.
-@interface FGMMarkerCollisionBehaviorBox : NSObject
-@property(nonatomic, assign) FGMMarkerCollisionBehavior value;
-- (instancetype)initWithValue:(FGMMarkerCollisionBehavior)value;
+/// Wrapper for FGMPlatformMarkerCollisionBehavior to allow for nullability.
+@interface FGMPlatformMarkerCollisionBehaviorBox : NSObject
+@property(nonatomic, assign) FGMPlatformMarkerCollisionBehavior value;
+- (instancetype)initWithValue:(FGMPlatformMarkerCollisionBehavior)value;
 @end
 
 /// Join types for polyline joints.
@@ -114,6 +114,7 @@ typedef NS_ENUM(NSUInteger, FGMPlatformMapBitmapScaling) {
 @class FGMPlatformLatLng;
 @class FGMPlatformLatLngBounds;
 @class FGMPlatformCameraTargetBounds;
+@class FGMPlatformGroundOverlay;
 @class FGMPlatformMapViewCreationParams;
 @class FGMPlatformMapConfiguration;
 @class FGMPlatformPoint;
@@ -309,7 +310,7 @@ typedef NS_ENUM(NSUInteger, FGMPlatformMapBitmapScaling) {
                        zIndex:(double)zIndex
                      markerId:(NSString *)markerId
              clusterManagerId:(nullable NSString *)clusterManagerId
-            collisionBehavior:(nullable FGMMarkerCollisionBehaviorBox *)collisionBehavior;
+            collisionBehavior:(nullable FGMPlatformMarkerCollisionBehaviorBox *)collisionBehavior;
 @property(nonatomic, assign) double alpha;
 @property(nonatomic, strong) FGMPlatformPoint *anchor;
 @property(nonatomic, assign) BOOL consumeTapEvents;
@@ -323,7 +324,7 @@ typedef NS_ENUM(NSUInteger, FGMPlatformMapBitmapScaling) {
 @property(nonatomic, assign) double zIndex;
 @property(nonatomic, copy) NSString *markerId;
 @property(nonatomic, copy, nullable) NSString *clusterManagerId;
-@property(nonatomic, strong, nullable) FGMMarkerCollisionBehaviorBox *collisionBehavior;
+@property(nonatomic, strong, nullable) FGMPlatformMarkerCollisionBehaviorBox *collisionBehavior;
 @end
 
 /// Pigeon equivalent of the Polygon class.
@@ -458,6 +459,34 @@ typedef NS_ENUM(NSUInteger, FGMPlatformMapBitmapScaling) {
 @property(nonatomic, strong, nullable) FGMPlatformLatLngBounds *bounds;
 @end
 
+/// Pigeon equivalent of the GroundOverlay class.
+@interface FGMPlatformGroundOverlay : NSObject
+/// `init` unavailable to enforce nonnull fields, see the `make` class method.
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)makeWithGroundOverlayId:(NSString *)groundOverlayId
+                                  image:(FGMPlatformBitmap *)image
+                               position:(nullable FGMPlatformLatLng *)position
+                                 bounds:(nullable FGMPlatformLatLngBounds *)bounds
+                                 anchor:(nullable FGMPlatformPoint *)anchor
+                           transparency:(double)transparency
+                                bearing:(double)bearing
+                                 zIndex:(NSInteger)zIndex
+                                visible:(BOOL)visible
+                              clickable:(BOOL)clickable
+                              zoomLevel:(nullable NSNumber *)zoomLevel;
+@property(nonatomic, copy) NSString *groundOverlayId;
+@property(nonatomic, strong) FGMPlatformBitmap *image;
+@property(nonatomic, strong, nullable) FGMPlatformLatLng *position;
+@property(nonatomic, strong, nullable) FGMPlatformLatLngBounds *bounds;
+@property(nonatomic, strong, nullable) FGMPlatformPoint *anchor;
+@property(nonatomic, assign) double transparency;
+@property(nonatomic, assign) double bearing;
+@property(nonatomic, assign) NSInteger zIndex;
+@property(nonatomic, assign) BOOL visible;
+@property(nonatomic, assign) BOOL clickable;
+@property(nonatomic, strong, nullable) NSNumber *zoomLevel;
+@end
+
 /// Information passed to the platform view creation.
 @interface FGMPlatformMapViewCreationParams : NSObject
 /// `init` unavailable to enforce nonnull fields, see the `make` class method.
@@ -471,7 +500,8 @@ typedef NS_ENUM(NSUInteger, FGMPlatformMapBitmapScaling) {
                  initialPolylines:(NSArray<FGMPlatformPolyline *> *)initialPolylines
                   initialHeatmaps:(NSArray<FGMPlatformHeatmap *> *)initialHeatmaps
               initialTileOverlays:(NSArray<FGMPlatformTileOverlay *> *)initialTileOverlays
-           initialClusterManagers:(NSArray<FGMPlatformClusterManager *> *)initialClusterManagers;
+           initialClusterManagers:(NSArray<FGMPlatformClusterManager *> *)initialClusterManagers
+            initialGroundOverlays:(NSArray<FGMPlatformGroundOverlay *> *)initialGroundOverlays;
 @property(nonatomic, strong) FGMPlatformCameraPosition *initialCameraPosition;
 @property(nonatomic, strong) FGMPlatformMapConfiguration *mapConfiguration;
 @property(nonatomic, copy) NSArray<FGMPlatformCircle *> *initialCircles;
@@ -481,6 +511,7 @@ typedef NS_ENUM(NSUInteger, FGMPlatformMapBitmapScaling) {
 @property(nonatomic, copy) NSArray<FGMPlatformHeatmap *> *initialHeatmaps;
 @property(nonatomic, copy) NSArray<FGMPlatformTileOverlay *> *initialTileOverlays;
 @property(nonatomic, copy) NSArray<FGMPlatformClusterManager *> *initialClusterManagers;
+@property(nonatomic, copy) NSArray<FGMPlatformGroundOverlay *> *initialGroundOverlays;
 @end
 
 /// Pigeon equivalent of MapConfiguration.
@@ -648,6 +679,7 @@ typedef NS_ENUM(NSUInteger, FGMPlatformMapBitmapScaling) {
 @property(nonatomic, strong, nullable) NSNumber *height;
 @end
 
+/// Pigeon equivalent of [PinConfig].
 @interface FGMPlatformBitmapPinConfig : NSObject
 + (instancetype)makeWithBackgroundColor:(nullable NSNumber *)backgroundColor
                             borderColor:(nullable NSNumber *)borderColor
@@ -712,6 +744,11 @@ NSObject<FlutterMessageCodec> *FGMGetMessagesCodec(void);
                           changing:(NSArray<FGMPlatformTileOverlay *> *)toChange
                           removing:(NSArray<NSString *> *)idsToRemove
                              error:(FlutterError *_Nullable *_Nonnull)error;
+/// Updates the set of ground overlays on the map.
+- (void)updateGroundOverlaysByAdding:(NSArray<FGMPlatformGroundOverlay *> *)toAdd
+                            changing:(NSArray<FGMPlatformGroundOverlay *> *)toChange
+                            removing:(NSArray<NSString *> *)idsToRemove
+                               error:(FlutterError *_Nullable *_Nonnull)error;
 /// Gets the screen coordinate for the given map location.
 ///
 /// @return `nil` only when `error != nil`.
@@ -730,8 +767,10 @@ NSObject<FlutterMessageCodec> *FGMGetMessagesCodec(void);
 /// animation.
 - (void)moveCameraWithUpdate:(FGMPlatformCameraUpdate *)cameraUpdate
                        error:(FlutterError *_Nullable *_Nonnull)error;
-/// Moves the camera according to [cameraUpdate], animating the update.
+/// Moves the camera according to [cameraUpdate], animating the update using a
+/// duration in milliseconds if provided.
 - (void)animateCameraWithUpdate:(FGMPlatformCameraUpdate *)cameraUpdate
+                       duration:(nullable NSNumber *)durationMilliseconds
                           error:(FlutterError *_Nullable *_Nonnull)error;
 /// Gets the current map zoom level.
 ///
@@ -768,7 +807,7 @@ NSObject<FlutterMessageCodec> *FGMGetMessagesCodec(void);
 /// Takes a snapshot of the map and returns its image data.
 - (nullable FlutterStandardTypedData *)takeSnapshotWithError:
     (FlutterError *_Nullable *_Nonnull)error;
-/// Returns true if the map supports advanced markers
+/// Returns true if the map supports advanced markers.
 ///
 /// @return `nil` only when `error != nil`.
 - (nullable NSNumber *)isAdvancedMarkersAvailable:(FlutterError *_Nullable *_Nonnull)error;
@@ -829,6 +868,9 @@ extern void SetUpFGMMapsApiWithSuffix(id<FlutterBinaryMessenger> binaryMessenger
 /// Called when a polyline is tapped.
 - (void)didTapPolylineWithIdentifier:(NSString *)polylineId
                           completion:(void (^)(FlutterError *_Nullable))completion;
+/// Called when a ground overlay is tapped.
+- (void)didTapGroundOverlayWithIdentifier:(NSString *)groundOverlayId
+                               completion:(void (^)(FlutterError *_Nullable))completion;
 /// Called to get data for a map tile.
 - (void)tileWithOverlayIdentifier:(NSString *)tileOverlayId
                          location:(FGMPlatformPoint *)location
@@ -873,6 +915,9 @@ extern void SetUpFGMMapsPlatformViewApiWithSuffix(id<FlutterBinaryMessenger> bin
 - (nullable FGMPlatformTileLayer *)tileOverlayWithIdentifier:(NSString *)tileOverlayId
                                                        error:
                                                            (FlutterError *_Nullable *_Nonnull)error;
+- (nullable FGMPlatformGroundOverlay *)
+    groundOverlayWithIdentifier:(NSString *)groundOverlayId
+                          error:(FlutterError *_Nullable *_Nonnull)error;
 - (nullable FGMPlatformHeatmap *)heatmapWithIdentifier:(NSString *)heatmapId
                                                  error:(FlutterError *_Nullable *_Nonnull)error;
 /// @return `nil` only when `error != nil`.
@@ -881,6 +926,8 @@ extern void SetUpFGMMapsPlatformViewApiWithSuffix(id<FlutterBinaryMessenger> bin
 - (nullable NSArray<FGMPlatformCluster *> *)
     clustersWithIdentifier:(NSString *)clusterManagerId
                      error:(FlutterError *_Nullable *_Nonnull)error;
+/// @return `nil` only when `error != nil`.
+- (nullable FGMPlatformCameraPosition *)cameraPosition:(FlutterError *_Nullable *_Nonnull)error;
 @end
 
 extern void SetUpFGMMapsInspectorApi(id<FlutterBinaryMessenger> binaryMessenger,

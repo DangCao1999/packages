@@ -14,8 +14,10 @@ import static io.flutter.plugins.googlemaps.Convert.HEATMAP_ID_KEY;
 import static io.flutter.plugins.googlemaps.Convert.HEATMAP_MAX_INTENSITY_KEY;
 import static io.flutter.plugins.googlemaps.Convert.HEATMAP_OPACITY_KEY;
 import static io.flutter.plugins.googlemaps.Convert.HEATMAP_RADIUS_KEY;
+import static io.flutter.plugins.googlemaps.Convert.getPinConfigFromPlatformPinConfig;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -23,16 +25,13 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import android.content.res.AssetManager;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.os.Build;
 import android.util.Base64;
 import androidx.annotation.NonNull;
 import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.GroundOverlay;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.PinConfig;
 import com.google.maps.android.clustering.algo.StaticCluster;
 import com.google.maps.android.geometry.Point;
 import com.google.maps.android.heatmaps.Gradient;
@@ -41,9 +40,6 @@ import com.google.maps.android.projection.SphericalMercatorProjection;
 import io.flutter.plugins.googlemaps.Convert.BitmapDescriptorFactoryWrapper;
 import io.flutter.plugins.googlemaps.Convert.FlutterInjectorWrapper;
 import io.flutter.plugins.googlemaps.Messages.PlatformMarkerType;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -55,11 +51,10 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(minSdk = Build.VERSION_CODES.LOLLIPOP)
 public class ConvertTest {
+
   @Mock private AssetManager assetManager;
 
   @Mock private BitmapDescriptorFactoryWrapper bitmapDescriptorFactoryWrapper;
@@ -73,7 +68,7 @@ public class ConvertTest {
   AutoCloseable mockCloseable;
 
   // A 1x1 pixel (#8080ff) PNG image encoded in base64
-  private final String base64Image = generateBase64Image();
+  private final String base64Image = TestImageUtils.generateBase64Image();
 
   @Before
   public void before() {
@@ -143,7 +138,7 @@ public class ConvertTest {
 
     when(flutterInjectorWrapper.getLookupKeyForAsset(fakeAssetName)).thenReturn(fakeAssetKey);
 
-    when(assetManager.open(fakeAssetKey)).thenReturn(buildImageInputStream());
+    when(assetManager.open(fakeAssetKey)).thenReturn(TestImageUtils.buildImageInputStream());
 
     when(bitmapDescriptorFactoryWrapper.fromBitmap(any())).thenReturn(mockBitmapDescriptor);
     Messages.PlatformBitmapAssetMap bitmap =
@@ -169,7 +164,7 @@ public class ConvertTest {
 
     when(flutterInjectorWrapper.getLookupKeyForAsset(fakeAssetName)).thenReturn(fakeAssetKey);
 
-    when(assetManager.open(fakeAssetKey)).thenReturn(buildImageInputStream());
+    when(assetManager.open(fakeAssetKey)).thenReturn(TestImageUtils.buildImageInputStream());
 
     when(bitmapDescriptorFactoryWrapper.fromBitmap(any())).thenReturn(mockBitmapDescriptor);
     Messages.PlatformBitmapAssetMap bitmap =
@@ -194,7 +189,7 @@ public class ConvertTest {
 
     when(flutterInjectorWrapper.getLookupKeyForAsset(fakeAssetName)).thenReturn(fakeAssetKey);
 
-    when(assetManager.open(fakeAssetKey)).thenReturn(buildImageInputStream());
+    when(assetManager.open(fakeAssetKey)).thenReturn(TestImageUtils.buildImageInputStream());
 
     when(bitmapDescriptorFactoryWrapper.fromBitmap(any())).thenReturn(mockBitmapDescriptor);
     Messages.PlatformBitmapAssetMap bitmap =
@@ -219,7 +214,7 @@ public class ConvertTest {
 
     when(flutterInjectorWrapper.getLookupKeyForAsset(fakeAssetName)).thenReturn(fakeAssetKey);
 
-    when(assetManager.open(fakeAssetKey)).thenReturn(buildImageInputStream());
+    when(assetManager.open(fakeAssetKey)).thenReturn(TestImageUtils.buildImageInputStream());
 
     when(bitmapDescriptorFactoryWrapper.fromAsset(any())).thenReturn(mockBitmapDescriptor);
 
@@ -337,17 +332,61 @@ public class ConvertTest {
   }
 
   @Test
-  public void GetBitmapFromPinConfig() {
-    Messages.PlatformBitmapPinConfig bitmap =
+  public void GetPinConfigFromPlatformPinConfig_GlyphColor() {
+    Messages.PlatformBitmapPinConfig platformBitmap =
         new Messages.PlatformBitmapPinConfig.Builder()
-            .setBackgroundColor(0xFFFFFFL)
-            .setBorderColor(0xFFFFFFL)
+            .setBackgroundColor(0x00FFFFL)
+            .setBorderColor(0xFF00FFL)
+            .setGlyphColor(0x112233L)
             .build();
 
-    when(bitmapDescriptorFactoryWrapper.fromPinConfig(any())).thenReturn(mockBitmapDescriptor);
-    BitmapDescriptor result =
-        Convert.getBitmapFromPinConfig(bitmap, assetManager, 1f, bitmapDescriptorFactoryWrapper);
-    Assert.assertEquals(mockBitmapDescriptor, result);
+    PinConfig pinConfig =
+        getPinConfigFromPlatformPinConfig(
+            platformBitmap, assetManager, 1, bitmapDescriptorFactoryWrapper);
+    Assert.assertEquals(0x00FFFFL, pinConfig.getBackgroundColor());
+    Assert.assertEquals(0xFF00FFL, pinConfig.getBorderColor());
+    Assert.assertEquals(0x112233L, pinConfig.getGlyph().getGlyphColor());
+  }
+
+  @Test
+  public void GetPinConfigFromPlatformPinConfig_Glyph() {
+    Messages.PlatformBitmapPinConfig platformBitmap =
+        new Messages.PlatformBitmapPinConfig.Builder()
+            .setGlyphText("Hi")
+            .setGlyphTextColor(0xFFFFFFL)
+            .build();
+    PinConfig pinConfig =
+        getPinConfigFromPlatformPinConfig(
+            platformBitmap, assetManager, 1, bitmapDescriptorFactoryWrapper);
+    Assert.assertEquals("Hi", pinConfig.getGlyph().getText());
+    Assert.assertEquals(0xFFFFFFL, pinConfig.getGlyph().getTextColor());
+  }
+
+  @Test
+  public void GetPinConfigFromPlatformPinConfig_GlyphBitmap() {
+    byte[] bmpData = Base64.decode(base64Image, Base64.DEFAULT);
+    Messages.PlatformBitmapBytesMap bytesBitmap =
+        new Messages.PlatformBitmapBytesMap.Builder()
+            .setBitmapScaling(Messages.PlatformMapBitmapScaling.AUTO)
+            .setImagePixelRatio(2.0)
+            .setByteData(bmpData)
+            .build();
+    Messages.PlatformBitmap icon =
+        new Messages.PlatformBitmap.Builder().setBitmap(bytesBitmap).build();
+    Messages.PlatformBitmapPinConfig platformBitmap =
+        new Messages.PlatformBitmapPinConfig.Builder()
+            .setBackgroundColor(0xFFFFFFL)
+            .setBorderColor(0x000000L)
+            .setGlyphBitmap(icon)
+            .build();
+    when(bitmapDescriptorFactoryWrapper.fromBitmap(any())).thenReturn(mockBitmapDescriptor);
+    PinConfig pinConfig =
+        getPinConfigFromPlatformPinConfig(
+            platformBitmap, assetManager, 1, bitmapDescriptorFactoryWrapper);
+
+    Assert.assertEquals(0xFFFFFFL, pinConfig.getBackgroundColor());
+    Assert.assertEquals(0x000000L, pinConfig.getBorderColor());
+    Assert.assertEquals(mockBitmapDescriptor, pinConfig.getGlyph().getBitmapDescriptor());
   }
 
   @Test
@@ -680,37 +719,140 @@ public class ConvertTest {
     Assert.assertEquals(idData, id);
   }
 
-  private InputStream buildImageInputStream() {
-    Bitmap fakeBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888);
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    fakeBitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-    byte[] byteArray = byteArrayOutputStream.toByteArray();
-    return new ByteArrayInputStream(byteArray);
+  @Test
+  public void buildGroundOverlayAnchorForPigeonWithNonCrossingMeridian() {
+    LatLng position = new LatLng(10, 20);
+    LatLng southwest = new LatLng(5, 15);
+    LatLng northeast = new LatLng(15, 25);
+    LatLngBounds bounds = new LatLngBounds(southwest, northeast);
+    GroundOverlay groundOverlay = mock(GroundOverlay.class);
+    when(groundOverlay.getPosition()).thenReturn(position);
+    when(groundOverlay.getBounds()).thenReturn(bounds);
+
+    Messages.PlatformDoublePair anchor = Convert.buildGroundOverlayAnchorForPigeon(groundOverlay);
+
+    Assert.assertEquals(0.5, anchor.getX(), 1e-15);
+    Assert.assertEquals(0.5, anchor.getY(), 1e-15);
   }
 
-  // Helper method to generate 1x1 pixel base64 encoded png test image
-  private String generateBase64Image() {
-    int width = 1;
-    int height = 1;
-    Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-    Canvas canvas = new Canvas(bitmap);
+  @Test
+  public void buildGroundOverlayAnchorForPigeonWithCrossingMeridian() {
+    LatLng position = new LatLng(10, -175);
+    LatLng southwest = new LatLng(5, 170);
+    LatLng northeast = new LatLng(15, -160);
+    LatLngBounds bounds = new LatLngBounds(southwest, northeast);
+    GroundOverlay groundOverlay = mock(GroundOverlay.class);
+    when(groundOverlay.getPosition()).thenReturn(position);
+    when(groundOverlay.getBounds()).thenReturn(bounds);
 
-    // Draw on the Bitmap
-    Paint paint = new Paint();
-    paint.setColor(Color.parseColor("#FF8080FF"));
-    canvas.drawRect(0, 0, width, height, paint);
+    Messages.PlatformDoublePair anchor = Convert.buildGroundOverlayAnchorForPigeon(groundOverlay);
 
-    // Convert the Bitmap to PNG format
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
-    byte[] pngBytes = outputStream.toByteArray();
+    Assert.assertEquals(0.5, anchor.getX(), 1e-15);
+    Assert.assertEquals(0.5, anchor.getY(), 1e-15);
+  }
 
-    // Encode the PNG bytes as a base64 string
-    return Base64.encodeToString(pngBytes, Base64.DEFAULT);
+  private void assertGroundOverlayEquals(
+      Messages.PlatformGroundOverlay result,
+      GroundOverlay expectedOverlay,
+      String expectedId,
+      LatLng expectedPosition,
+      LatLngBounds expectedBounds) {
+    Assert.assertEquals(expectedId, result.getGroundOverlayId());
+    if (expectedPosition != null) {
+      Assert.assertNotNull(result.getPosition());
+      Assert.assertEquals(expectedPosition.latitude, result.getPosition().getLatitude(), 1e-15);
+      Assert.assertEquals(expectedPosition.longitude, result.getPosition().getLongitude(), 1e-15);
+      Assert.assertNotNull(result.getWidth());
+      Assert.assertNotNull(result.getHeight());
+      Assert.assertEquals(expectedOverlay.getWidth(), result.getWidth(), 1e-15);
+      Assert.assertEquals(expectedOverlay.getHeight(), result.getHeight(), 1e-15);
+    } else {
+      Assert.assertNull(result.getPosition());
+    }
+    if (expectedBounds != null) {
+      Assert.assertNotNull(result.getBounds());
+      Assert.assertEquals(
+          expectedBounds.southwest.latitude,
+          result.getBounds().getSouthwest().getLatitude(),
+          1e-15);
+      Assert.assertEquals(
+          expectedBounds.southwest.longitude,
+          result.getBounds().getSouthwest().getLongitude(),
+          1e-15);
+      Assert.assertEquals(
+          expectedBounds.northeast.latitude,
+          result.getBounds().getNortheast().getLatitude(),
+          1e-15);
+      Assert.assertEquals(
+          expectedBounds.northeast.longitude,
+          result.getBounds().getNortheast().getLongitude(),
+          1e-15);
+    } else {
+      Assert.assertNull(result.getBounds());
+    }
+
+    Assert.assertEquals(expectedOverlay.getBearing(), result.getBearing(), 1e-15);
+    Assert.assertEquals(expectedOverlay.getTransparency(), result.getTransparency(), 1e-6);
+    Assert.assertEquals(expectedOverlay.getZIndex(), result.getZIndex().intValue(), 1e-6);
+    Assert.assertEquals(expectedOverlay.isVisible(), result.getVisible());
+    Assert.assertEquals(expectedOverlay.isClickable(), result.getClickable());
+    Messages.PlatformDoublePair anchor = result.getAnchor();
+    Assert.assertNotNull(anchor);
+    Assert.assertEquals(0.5, anchor.getX(), 1e-6);
+    Assert.assertEquals(0.5, anchor.getY(), 1e-6);
+  }
+
+  @Test
+  public void groundOverlayToPigeonWithPosition() {
+    GroundOverlay mockGroundOverlay = mock(GroundOverlay.class);
+    LatLng position = new LatLng(10, 20);
+    LatLng southwest = new LatLng(5, 15);
+    LatLng northeast = new LatLng(15, 25);
+    LatLngBounds bounds = new LatLngBounds(southwest, northeast);
+    when(mockGroundOverlay.getPosition()).thenReturn(position);
+    when(mockGroundOverlay.getBounds()).thenReturn(bounds);
+    when(mockGroundOverlay.getWidth()).thenReturn(30f);
+    when(mockGroundOverlay.getHeight()).thenReturn(40f);
+    when(mockGroundOverlay.getBearing()).thenReturn(50f);
+    when(mockGroundOverlay.getTransparency()).thenReturn(0.6f);
+    when(mockGroundOverlay.getZIndex()).thenReturn(7f);
+    when(mockGroundOverlay.isVisible()).thenReturn(true);
+    when(mockGroundOverlay.isClickable()).thenReturn(false);
+
+    String overlayId = "overlay_1";
+    Messages.PlatformGroundOverlay result =
+        Convert.groundOverlayToPigeon(mockGroundOverlay, overlayId, false);
+
+    assertGroundOverlayEquals(result, mockGroundOverlay, overlayId, position, null);
+  }
+
+  @Test
+  public void groundOverlayToPigeonWithBounds() {
+    GroundOverlay mockGroundOverlay = mock(GroundOverlay.class);
+    LatLng position = new LatLng(10, 20);
+    LatLng southwest = new LatLng(5, 15);
+    LatLng northeast = new LatLng(15, 25);
+    LatLngBounds bounds = new LatLngBounds(southwest, northeast);
+    when(mockGroundOverlay.getPosition()).thenReturn(position);
+    when(mockGroundOverlay.getBounds()).thenReturn(bounds);
+    when(mockGroundOverlay.getWidth()).thenReturn(30f);
+    when(mockGroundOverlay.getHeight()).thenReturn(40f);
+    when(mockGroundOverlay.getBearing()).thenReturn(50f);
+    when(mockGroundOverlay.getTransparency()).thenReturn(0.6f);
+    when(mockGroundOverlay.getZIndex()).thenReturn(7f);
+    when(mockGroundOverlay.isVisible()).thenReturn(true);
+    when(mockGroundOverlay.isClickable()).thenReturn(false);
+
+    String overlayId = "overlay_2";
+    Messages.PlatformGroundOverlay result =
+        Convert.groundOverlayToPigeon(mockGroundOverlay, overlayId, true);
+
+    assertGroundOverlayEquals(result, mockGroundOverlay, overlayId, null, bounds);
   }
 }
 
 class MockHeatmapBuilder implements HeatmapOptionsSink {
+
   private List<WeightedLatLng> weightedData;
   private Gradient gradient;
   private double maxIntensity;

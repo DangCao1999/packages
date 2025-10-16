@@ -200,6 +200,12 @@ LatLngBounds gmLatLngBoundsToLatLngBounds(gmaps.LatLngBounds latLngBounds) {
   );
 }
 
+/// Converts a [LatLngBounds] into a [gmaps.LatLngBounds].
+gmaps.LatLngBounds latLngBoundsToGmlatLngBounds(LatLngBounds latLngBounds) {
+  return gmaps.LatLngBounds(_latLngToGmLatLng(latLngBounds.southwest),
+      _latLngToGmLatLng(latLngBounds.northeast));
+}
+
 CameraPosition _gmViewportToCameraPosition(gmaps.Map map) {
   return CameraPosition(
     target:
@@ -219,7 +225,7 @@ gmaps.InfoWindowOptions? _infoWindowOptionsFromMarker(Marker marker) {
 
   // If both the title and snippet of an infowindow are empty, we don't really
   // want an infowindow...
-  if ((markerTitle.isEmpty) && (markerSnippet.isEmpty)) {
+  if (markerTitle.isEmpty && markerSnippet.isEmpty) {
     return null;
   }
 
@@ -298,13 +304,25 @@ void _setIconStyle({
     'style',
     <String>[
       if (size != null) ...<String>[
-        'width: ${size.width}px;',
-        'height: ${size.height}px;',
+        'width: ${size.width.toStringAsFixed(1)}px;',
+        'height: ${size.height.toStringAsFixed(1)}px;',
       ],
       if (opacity != null) 'opacity: $opacity;',
       if (isVisible != null) 'visibility: ${isVisible ? 'visible' : 'hidden'};',
     ].join(' '),
   );
+}
+
+void _setIconAnchor({
+  required gmaps.Size size,
+  required Offset anchor,
+  required gmaps.Icon icon,
+}) {
+  final gmaps.Point gmapsAnchor = gmaps.Point(
+    size.width * anchor.dx,
+    size.height * anchor.dy,
+  );
+  icon.anchor = gmapsAnchor;
 }
 
 // Sets the size of the Google Maps icon.
@@ -516,7 +534,9 @@ Future<Node?> _advancedMarkerIconFromBitmapDescriptor(
 
 // Converts a [BitmapDescriptor] into a [gmaps.Icon] that can be used in Markers.
 Future<gmaps.Icon?> _gmIconFromBitmapDescriptor(
-    BitmapDescriptor bitmapDescriptor) async {
+  BitmapDescriptor bitmapDescriptor,
+  Offset anchor,
+) async {
   gmaps.Icon? icon;
 
   if (bitmapDescriptor is MapBitmap) {
@@ -539,6 +559,7 @@ Future<gmaps.Icon?> _gmIconFromBitmapDescriptor(
         final gmaps.Size? size = await _getBitmapSize(bitmapDescriptor, url);
         if (size != null) {
           _setIconSize(size: size, icon: icon);
+          _setIconAnchor(size: size, anchor: anchor, icon: icon);
         }
       case MapBitmapScaling.none:
         break;
@@ -622,7 +643,7 @@ Future<O> _markerOptionsFromMarker<T, O>(
         marker.position.latitude,
         marker.position.longitude,
       )
-      ..icon = await _gmIconFromBitmapDescriptor(marker.icon)
+      ..icon = await _gmIconFromBitmapDescriptor(marker.icon, marker.anchor)
       ..title = sanitizeHtml(marker.infoWindow.title ?? '')
       ..zIndex = marker.zIndex
       ..visible = marker.visible
@@ -864,6 +885,22 @@ void _applyCameraUpdate(gmaps.Map map, CameraUpdate update) {
   }
 }
 
+/// Converts a [MapBitmap] into a URL.
+String urlFromMapBitmap(MapBitmap mapBitmap) {
+  return switch (mapBitmap) {
+    (final BytesMapBitmap bytesMapBitmap) =>
+      _bitmapBlobUrlCache.putIfAbsent(bytesMapBitmap.byteData.hashCode, () {
+        final Blob blob =
+            Blob(<JSUint8Array>[bytesMapBitmap.byteData.toJS].toJS);
+        return URL.createObjectURL(blob as JSObject);
+      }),
+    (final AssetMapBitmap assetMapBitmap) =>
+      ui_web.assetManager.getAssetUrl(assetMapBitmap.assetName),
+    _ => throw UnimplementedError(
+        'Only BytesMapBitmap and AssetMapBitmap are supported.'),
+  };
+}
+
 // original JS by: Byron Singh (https://stackoverflow.com/a/30541162)
 gmaps.LatLng _pixelToLatLng(gmaps.Map map, int x, int y) {
   final gmaps.LatLngBounds? bounds = map.bounds;
@@ -896,7 +933,7 @@ gmaps.CollisionBehavior _markerCollisionBehaviorToGmCollisionBehavior(
   MarkerCollisionBehavior markerCollisionBehavior,
 ) {
   return switch (markerCollisionBehavior) {
-    MarkerCollisionBehavior.required => gmaps.CollisionBehavior.REQUIRED,
+    MarkerCollisionBehavior.requiredDisplay => gmaps.CollisionBehavior.REQUIRED,
     MarkerCollisionBehavior.optionalAndHidesLowerPriority =>
       gmaps.CollisionBehavior.OPTIONAL_AND_HIDES_LOWER_PRIORITY,
     MarkerCollisionBehavior.requiredAndHidesOptional =>

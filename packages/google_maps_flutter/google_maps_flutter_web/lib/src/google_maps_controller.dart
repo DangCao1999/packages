@@ -31,6 +31,7 @@ class GoogleMapController {
         _circles = mapObjects.circles,
         _clusterManagers = mapObjects.clusterManagers,
         _heatmaps = mapObjects.heatmaps,
+        _groundOverlays = mapObjects.groundOverlays,
         _tileOverlays = mapObjects.tileOverlays,
         _lastMapConfiguration = mapConfiguration {
     _circlesController = CirclesController(stream: _streamController);
@@ -51,7 +52,7 @@ class GoogleMapController {
           assert(
             markerTypes.first == Marker,
             'All markers must be of type Marker because '
-            'mapConfiguration.markerType is MarkerType.legacy',
+            'mapConfiguration.markerType is MarkerType.marker',
           );
         case MarkerType.advancedMarker:
           assert(
@@ -86,6 +87,8 @@ class GoogleMapController {
     };
 
     _tileOverlaysController = TileOverlaysController();
+    _groundOverlaysController =
+        GroundOverlaysController(stream: _streamController);
     _updateStylesFromConfiguration(mapConfiguration);
 
     // Register the view factory that will hold the `_div` that holds the map in the DOM.
@@ -113,6 +116,7 @@ class GoogleMapController {
   final Set<ClusterManager> _clusterManagers;
   final Set<Heatmap> _heatmaps;
   Set<TileOverlay> _tileOverlays;
+  final Set<GroundOverlay> _groundOverlays;
 
   // The configuration passed by the user, before converting to gmaps.
   // Caching this allows us to re-create the map faithfully when needed.
@@ -174,6 +178,7 @@ class GoogleMapController {
   MarkersController<Object?, Object>? _markersController;
   ClusterManagersController<Object?>? _clusterManagersController;
   TileOverlaysController? _tileOverlaysController;
+  GroundOverlaysController? _groundOverlaysController;
 
   // Keeps track if _attachGeometryControllers has been called or not.
   bool _controllersBoundToMap = false;
@@ -185,6 +190,11 @@ class GoogleMapController {
   @visibleForTesting
   ClusterManagersController<Object?>? get clusterManagersController =>
       _clusterManagersController;
+
+  /// The GroundOverlaysController of this Map. Only for integration testing.
+  @visibleForTesting
+  GroundOverlaysController? get groundOverlayController =>
+      _groundOverlaysController;
 
   /// Overrides certain properties to install mocks defined during testing.
   @visibleForTesting
@@ -198,6 +208,7 @@ class GoogleMapController {
     PolylinesController? polylines,
     ClusterManagersController<Object?>? clusterManagers,
     TileOverlaysController? tileOverlays,
+    GroundOverlaysController? groundOverlays,
   }) {
     _overrideCreateMap = createMap;
     _overrideSetOptions = setOptions;
@@ -208,6 +219,7 @@ class GoogleMapController {
     _polylinesController = polylines ?? _polylinesController;
     _clusterManagersController = clusterManagers ?? _clusterManagersController;
     _tileOverlaysController = tileOverlays ?? _tileOverlaysController;
+    _groundOverlaysController = groundOverlays ?? _groundOverlaysController;
   }
 
   DebugCreateMapFunction? _overrideCreateMap;
@@ -325,6 +337,8 @@ class GoogleMapController {
         'Cannot attach a map to a null ClusterManagersController instance.');
     assert(_tileOverlaysController != null,
         'Cannot attach a map to a null TileOverlaysController instance.');
+    assert(_groundOverlaysController != null,
+        'Cannot attach a map to a null GroundOverlaysController instance.');
 
     _circlesController!.bindToMap(_mapId, map);
     _heatmapsController!.bindToMap(_mapId, map);
@@ -333,6 +347,7 @@ class GoogleMapController {
     _markersController!.bindToMap(_mapId, map);
     _clusterManagersController!.bindToMap(_mapId, map);
     _tileOverlaysController!.bindToMap(_mapId, map);
+    _groundOverlaysController!.bindToMap(_mapId, map);
 
     _controllersBoundToMap = true;
   }
@@ -358,6 +373,7 @@ class GoogleMapController {
     _polygonsController!.addPolygons(_polygons);
     _polylinesController!.addPolylines(_polylines);
     _tileOverlaysController!.addTileOverlays(_tileOverlays);
+    _groundOverlaysController!.addGroundOverlays(_groundOverlays);
   }
 
   // Merges new options coming from the plugin into _lastConfiguration.
@@ -550,6 +566,16 @@ class GoogleMapController {
         ?.removeClusterManagers(updates.clusterManagerIdsToRemove);
   }
 
+  /// Updates the set of [GroundOverlay]s.
+  void updateGroundOverlays(GroundOverlayUpdates updates) {
+    assert(_groundOverlaysController != null,
+        'Cannot update tile overlays after dispose().');
+    _groundOverlaysController?.addGroundOverlays(updates.objectsToAdd);
+    _groundOverlaysController?.changeGroundOverlays(updates.objectsToChange);
+    _groundOverlaysController?.removeGroundOverlays(
+        updates.objectIdsToRemove.cast<GroundOverlayId>());
+  }
+
   /// Updates the set of [TileOverlay]s.
   void updateTileOverlays(Set<TileOverlay> newOverlays) {
     final MapsObjectUpdates<TileOverlay> updates =
@@ -611,6 +637,7 @@ class GoogleMapController {
     _markersController = null;
     _clusterManagersController = null;
     _tileOverlaysController = null;
+    _groundOverlaysController = null;
     _streamController.close();
   }
 }

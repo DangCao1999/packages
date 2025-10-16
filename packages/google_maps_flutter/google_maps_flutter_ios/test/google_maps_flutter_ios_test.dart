@@ -10,6 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter_ios/google_maps_flutter_ios.dart';
 import 'package:google_maps_flutter_ios/src/messages.g.dart';
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
+import 'package:google_maps_flutter_platform_interface/src/types/advanced_marker.dart'
+    as advanced_marker;
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 
@@ -131,7 +133,7 @@ void main() {
     await maps.animateCamera(update, mapId: mapId);
 
     final VerificationResult verification =
-        verify(api.animateCamera(captureAny));
+        verify(api.animateCamera(captureAny, captureAny));
     final PlatformCameraUpdate passedUpdate =
         verification.captured[0] as PlatformCameraUpdate;
     final PlatformCameraUpdateScrollBy scroll =
@@ -139,6 +141,36 @@ void main() {
     update as CameraUpdateScrollBy;
     expect(scroll.dx, update.dx);
     expect(scroll.dy, update.dy);
+    expect(verification.captured[1], isNull);
+  });
+
+  test('animateCameraWithConfiguration calls through', () async {
+    const int mapId = 1;
+    final (GoogleMapsFlutterIOS maps, MockMapsApi api) =
+        setUpMockMap(mapId: mapId);
+
+    final CameraUpdate update = CameraUpdate.scrollBy(10, 20);
+    const CameraUpdateAnimationConfiguration configuration =
+        CameraUpdateAnimationConfiguration(duration: Duration(seconds: 1));
+    expect(configuration.duration?.inSeconds, 1);
+    await maps.animateCameraWithConfiguration(
+      update,
+      configuration,
+      mapId: mapId,
+    );
+
+    final VerificationResult verification =
+        verify(api.animateCamera(captureAny, captureAny));
+    final PlatformCameraUpdate passedUpdate =
+        verification.captured[0] as PlatformCameraUpdate;
+    final PlatformCameraUpdateScrollBy scroll =
+        passedUpdate.cameraUpdate as PlatformCameraUpdateScrollBy;
+    update as CameraUpdateScrollBy;
+    expect(scroll.dx, update.dx);
+    expect(scroll.dy, update.dy);
+
+    final int? passedDuration = verification.captured[1] as int?;
+    expect(passedDuration, configuration.duration?.inMilliseconds);
   });
 
   test('getZoomLevel passes values correctly', () async {
@@ -449,6 +481,106 @@ void main() {
     }
   });
 
+  test('updateMarkers passes expected arguments (AdvancedMarkers)', () async {
+    const int mapId = 1;
+    final (GoogleMapsFlutterIOS maps, MockMapsApi api) =
+        setUpMockMap(mapId: mapId);
+
+    final AdvancedMarker object1 =
+        AdvancedMarker(markerId: const MarkerId('1'));
+    final AdvancedMarker object2old =
+        AdvancedMarker(markerId: const MarkerId('2'));
+    final AdvancedMarker object2new = object2old.copyWith(
+        rotationParam: 42,
+        collisionBehaviorParam: advanced_marker
+            .MarkerCollisionBehavior.optionalAndHidesLowerPriority);
+    final AdvancedMarker object3 = AdvancedMarker(
+        markerId: const MarkerId('3'),
+        collisionBehavior:
+            advanced_marker.MarkerCollisionBehavior.requiredAndHidesOptional);
+    await maps.updateMarkers(
+        MarkerUpdates.from(<AdvancedMarker>{object1, object2old},
+            <AdvancedMarker>{object2new, object3}),
+        mapId: mapId);
+
+    final VerificationResult verification =
+        verify(api.updateMarkers(captureAny, captureAny, captureAny));
+    final List<PlatformMarker> toAdd =
+        verification.captured[0] as List<PlatformMarker>;
+    final List<PlatformMarker> toChange =
+        verification.captured[1] as List<PlatformMarker>;
+    final List<String> toRemove = verification.captured[2] as List<String>;
+    // Object one should be removed.
+    expect(toRemove.length, 1);
+    expect(toRemove.first, object1.markerId.value);
+    // Object two should be changed.
+    {
+      expect(toChange.length, 1);
+      final PlatformMarker firstChanged = toChange.first;
+      expect(firstChanged.alpha, object2new.alpha);
+      expect(firstChanged.anchor.x, object2new.anchor.dx);
+      expect(firstChanged.anchor.y, object2new.anchor.dy);
+      expect(firstChanged.consumeTapEvents, object2new.consumeTapEvents);
+      expect(firstChanged.draggable, object2new.draggable);
+      expect(firstChanged.flat, object2new.flat);
+      expect(
+          firstChanged.icon.bitmap.runtimeType,
+          GoogleMapsFlutterIOS.platformBitmapFromBitmapDescriptor(
+                  object2new.icon)
+              .bitmap
+              .runtimeType);
+      expect(firstChanged.infoWindow.title, object2new.infoWindow.title);
+      expect(firstChanged.infoWindow.snippet, object2new.infoWindow.snippet);
+      expect(firstChanged.infoWindow.anchor.x, object2new.infoWindow.anchor.dx);
+      expect(firstChanged.infoWindow.anchor.y, object2new.infoWindow.anchor.dy);
+      expect(firstChanged.position.latitude, object2new.position.latitude);
+      expect(firstChanged.position.longitude, object2new.position.longitude);
+      expect(firstChanged.rotation, object2new.rotation);
+      expect(firstChanged.visible, object2new.visible);
+      expect(firstChanged.zIndex, object2new.zIndex);
+      expect(firstChanged.markerId, object2new.markerId.value);
+      expect(firstChanged.clusterManagerId, object2new.clusterManagerId?.value);
+      expect(
+        firstChanged.collisionBehavior,
+        GoogleMapsFlutterIOS
+            .platformMarkerCollisionBehaviorFromMarkerCollisionBehavior(
+                object2new.collisionBehavior),
+      );
+    }
+    // Object 3 should be added.
+    {
+      expect(toAdd.length, 1);
+      final PlatformMarker firstAdded = toAdd.first;
+      expect(firstAdded.alpha, object3.alpha);
+      expect(firstAdded.anchor.x, object3.anchor.dx);
+      expect(firstAdded.anchor.y, object3.anchor.dy);
+      expect(firstAdded.consumeTapEvents, object3.consumeTapEvents);
+      expect(firstAdded.draggable, object3.draggable);
+      expect(firstAdded.flat, object3.flat);
+      expect(
+          firstAdded.icon.bitmap.runtimeType,
+          GoogleMapsFlutterIOS.platformBitmapFromBitmapDescriptor(object3.icon)
+              .bitmap
+              .runtimeType);
+      expect(firstAdded.infoWindow.title, object3.infoWindow.title);
+      expect(firstAdded.infoWindow.snippet, object3.infoWindow.snippet);
+      expect(firstAdded.infoWindow.anchor.x, object3.infoWindow.anchor.dx);
+      expect(firstAdded.infoWindow.anchor.y, object3.infoWindow.anchor.dy);
+      expect(firstAdded.position.latitude, object3.position.latitude);
+      expect(firstAdded.position.longitude, object3.position.longitude);
+      expect(firstAdded.rotation, object3.rotation);
+      expect(firstAdded.visible, object3.visible);
+      expect(firstAdded.zIndex, object3.zIndex);
+      expect(firstAdded.markerId, object3.markerId.value);
+      expect(firstAdded.clusterManagerId, object3.clusterManagerId?.value);
+      expect(
+          firstAdded.collisionBehavior,
+          GoogleMapsFlutterIOS
+              .platformMarkerCollisionBehaviorFromMarkerCollisionBehavior(
+                  object3.collisionBehavior));
+    }
+  });
+
   test('updatePolygons passes expected arguments', () async {
     const int mapId = 1;
     final (GoogleMapsFlutterIOS maps, MockMapsApi api) =
@@ -612,6 +744,150 @@ void main() {
     expectTileOverlay(toAdd.first, object3);
   });
 
+  test('updateGroundOverlays passes expected arguments', () async {
+    const int mapId = 1;
+    final (GoogleMapsFlutterIOS maps, MockMapsApi api) =
+        setUpMockMap(mapId: mapId);
+
+    final AssetMapBitmap image = AssetMapBitmap(
+      'assets/red_square.png',
+      imagePixelRatio: 1.0,
+      bitmapScaling: MapBitmapScaling.none,
+    );
+
+    final GroundOverlay object1 = GroundOverlay.fromBounds(
+      groundOverlayId: const GroundOverlayId('1'),
+      bounds: LatLngBounds(
+          southwest: const LatLng(10, 20), northeast: const LatLng(30, 40)),
+      image: image,
+    );
+    final GroundOverlay object2old = GroundOverlay.fromBounds(
+      groundOverlayId: const GroundOverlayId('2'),
+      bounds: LatLngBounds(
+          southwest: const LatLng(10, 20), northeast: const LatLng(30, 40)),
+      image: image,
+    );
+    final GroundOverlay object2new = object2old.copyWith(
+      visibleParam: false,
+      bearingParam: 10,
+      clickableParam: false,
+      transparencyParam: 0.5,
+      zIndexParam: 100,
+    );
+    final GroundOverlay object3 = GroundOverlay.fromPosition(
+      groundOverlayId: const GroundOverlayId('3'),
+      position: const LatLng(10, 20),
+      width: 100,
+      image: image,
+      zoomLevel: 14.0,
+    );
+    await maps.updateGroundOverlays(
+        GroundOverlayUpdates.from(<GroundOverlay>{object1, object2old},
+            <GroundOverlay>{object2new, object3}),
+        mapId: mapId);
+
+    final VerificationResult verification =
+        verify(api.updateGroundOverlays(captureAny, captureAny, captureAny));
+
+    final List<PlatformGroundOverlay> toAdd =
+        verification.captured[0] as List<PlatformGroundOverlay>;
+    final List<PlatformGroundOverlay> toChange =
+        verification.captured[1] as List<PlatformGroundOverlay>;
+    final List<String> toRemove = verification.captured[2] as List<String>;
+    // Object one should be removed.
+    expect(toRemove.length, 1);
+    expect(toRemove.first, object1.groundOverlayId.value);
+    // Object two should be changed.
+    {
+      expect(toChange.length, 1);
+      final PlatformGroundOverlay firstChanged = toChange.first;
+      expect(firstChanged.anchor?.x, object2new.anchor?.dx);
+      expect(firstChanged.anchor?.y, object2new.anchor?.dy);
+      expect(firstChanged.bearing, object2new.bearing);
+      expect(firstChanged.bounds?.northeast.latitude,
+          object2new.bounds?.northeast.latitude);
+      expect(firstChanged.bounds?.northeast.longitude,
+          object2new.bounds?.northeast.longitude);
+      expect(firstChanged.bounds?.southwest.latitude,
+          object2new.bounds?.southwest.latitude);
+      expect(firstChanged.bounds?.southwest.longitude,
+          object2new.bounds?.southwest.longitude);
+      expect(firstChanged.visible, object2new.visible);
+      expect(firstChanged.clickable, object2new.clickable);
+      expect(firstChanged.zIndex, object2new.zIndex);
+      expect(firstChanged.position?.latitude, object2new.position?.latitude);
+      expect(firstChanged.position?.longitude, object2new.position?.longitude);
+      expect(firstChanged.zoomLevel, object2new.zoomLevel);
+      expect(firstChanged.transparency, object2new.transparency);
+      expect(
+          firstChanged.image.bitmap.runtimeType,
+          GoogleMapsFlutterIOS.platformBitmapFromBitmapDescriptor(
+                  object2new.image)
+              .bitmap
+              .runtimeType);
+    }
+    // Object three should be added.
+    {
+      expect(toAdd.length, 1);
+      final PlatformGroundOverlay firstAdded = toAdd.first;
+      expect(firstAdded.anchor?.x, object3.anchor?.dx);
+      expect(firstAdded.anchor?.y, object3.anchor?.dy);
+      expect(firstAdded.bearing, object3.bearing);
+      expect(firstAdded.bounds?.northeast.latitude,
+          object3.bounds?.northeast.latitude);
+      expect(firstAdded.bounds?.northeast.longitude,
+          object3.bounds?.northeast.longitude);
+      expect(firstAdded.bounds?.southwest.latitude,
+          object3.bounds?.southwest.latitude);
+      expect(firstAdded.bounds?.southwest.longitude,
+          object3.bounds?.southwest.longitude);
+      expect(firstAdded.visible, object3.visible);
+      expect(firstAdded.clickable, object3.clickable);
+      expect(firstAdded.zIndex, object3.zIndex);
+      expect(firstAdded.position?.latitude, object3.position?.latitude);
+      expect(firstAdded.position?.longitude, object3.position?.longitude);
+      expect(firstAdded.zoomLevel, object3.zoomLevel);
+      expect(firstAdded.transparency, object3.transparency);
+      expect(
+          firstAdded.image.bitmap.runtimeType,
+          GoogleMapsFlutterIOS.platformBitmapFromBitmapDescriptor(object3.image)
+              .bitmap
+              .runtimeType);
+    }
+  });
+
+  test(
+      'updateGroundOverlays throws assertion error on unsupported ground overlays',
+      () async {
+    const int mapId = 1;
+    final (GoogleMapsFlutterIOS maps, MockMapsApi api) =
+        setUpMockMap(mapId: mapId);
+
+    final AssetMapBitmap image = AssetMapBitmap(
+      'assets/red_square.png',
+      imagePixelRatio: 1.0,
+      bitmapScaling: MapBitmapScaling.none,
+    );
+
+    final GroundOverlay object3 = GroundOverlay.fromPosition(
+      groundOverlayId: const GroundOverlayId('1'),
+      position: const LatLng(10, 20),
+      // Assert should be thrown because zoomLevel is not set for position-based
+      // ground overlay on iOS.
+      // ignore: avoid_redundant_argument_values
+      zoomLevel: null,
+      image: image,
+    );
+
+    expect(
+      () async => maps.updateGroundOverlays(
+          GroundOverlayUpdates.from(
+              const <GroundOverlay>{}, <GroundOverlay>{object3}),
+          mapId: mapId),
+      throwsAssertionError,
+    );
+  });
+
   test('markers send drag event to correct streams', () async {
     const int mapId = 1;
     const String dragStartId = 'drag-start-marker';
@@ -744,6 +1020,24 @@ void main() {
 
     // Simulate message from the native side.
     callbackHandler.onPolylineTap(objectId);
+
+    expect((await stream.next).value.value, equals(objectId));
+  });
+
+  test('ground overlays send tap events to correct stream', () async {
+    const int mapId = 1;
+    const String objectId = 'object-id';
+
+    final GoogleMapsFlutterIOS maps = GoogleMapsFlutterIOS();
+    final HostMapMessageHandler callbackHandler =
+        maps.ensureHandlerInitialized(mapId);
+
+    final StreamQueue<GroundOverlayTapEvent> stream =
+        StreamQueue<GroundOverlayTapEvent>(
+            maps.onGroundOverlayTap(mapId: mapId));
+
+    // Simulate message from the native side.
+    callbackHandler.onGroundOverlayTap(objectId);
 
     expect((await stream.next).value.value, equals(objectId));
   });

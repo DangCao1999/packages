@@ -17,7 +17,6 @@ import static org.mockito.Mockito.when;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-import android.os.Build;
 import androidx.test.core.app.ApplicationProvider;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.CameraPosition;
@@ -47,10 +46,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(minSdk = Build.VERSION_CODES.LOLLIPOP)
 public class ClusterManagersControllerTest {
   private Context context;
   private MapsCallbackApi flutterApi;
@@ -269,7 +266,7 @@ public class ClusterManagersControllerTest {
         .setClusterManagerId(clusterManagerId)
         .setAnchor(anchor)
         .setInfoWindow(new Messages.PlatformInfoWindow.Builder().setAnchor(anchor).build())
-        .setCollisionBehavior(PlatformMarkerCollisionBehavior.REQUIRED)
+        .setCollisionBehavior(PlatformMarkerCollisionBehavior.REQUIRED_DISPLAY)
         .build();
   }
 }

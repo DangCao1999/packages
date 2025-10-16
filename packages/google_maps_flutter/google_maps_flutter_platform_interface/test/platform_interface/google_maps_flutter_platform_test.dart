@@ -130,6 +130,28 @@ void main() {
         expect(await platform.isAdvancedMarkersAvailable(mapId: 0), isFalse);
       },
     );
+
+    test(
+        'default implementation of `animateCameraWithConfiguration` delegates to `animateCamera`',
+        () {
+      final GoogleMapsFlutterPlatform platform =
+          ExtendsGoogleMapsFlutterPlatform();
+      GoogleMapsFlutterPlatform.instance = platform;
+
+      const CameraUpdateAnimationConfiguration animationConfig =
+          CameraUpdateAnimationConfiguration(duration: Duration(seconds: 2));
+      final CameraUpdate cameraUpdate = CameraUpdate.newCameraPosition(
+        const CameraPosition(target: LatLng(10.0, 15.0)),
+      );
+
+      expect(
+          () => platform.animateCameraWithConfiguration(
+              cameraUpdate, animationConfig, mapId: 0),
+          throwsA(isA<UnimplementedError>().having(
+              (UnimplementedError e) => e.message,
+              'message',
+              contains('animateCamera() has not been implemented'))));
+    });
   });
 }
 

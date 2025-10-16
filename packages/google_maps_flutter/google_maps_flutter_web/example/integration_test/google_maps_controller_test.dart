@@ -18,7 +18,7 @@ import 'google_maps_controller_test.mocks.dart';
 
 // This value is used when comparing long~num, like
 // LatLng values.
-const String _kCloudMapId = '000000000000000'; // Dummy map ID.
+const String _kMapId = '000000000000000'; // Dummy map ID.
 
 gmaps.Map mapShim() => throw UnimplementedError();
 
@@ -39,6 +39,9 @@ gmaps.Map mapShim() => throw UnimplementedError();
     fallbackGenerators: <Symbol, Function>{#googleMap: mapShim},
   ),
   MockSpec<TileOverlaysController>(
+    fallbackGenerators: <Symbol, Function>{#googleMap: mapShim},
+  ),
+  MockSpec<GroundOverlaysController>(
     fallbackGenerators: <Symbol, Function>{#googleMap: mapShim},
   ),
 ])
@@ -252,6 +255,7 @@ void main() {
       late MockPolygonsController polygons;
       late MockPolylinesController polylines;
       late MockTileOverlaysController tileOverlays;
+      late MockGroundOverlaysController groundOverlays;
       late gmaps.Map map;
 
       setUp(() {
@@ -261,6 +265,7 @@ void main() {
         polygons = MockPolygonsController();
         polylines = MockPolylinesController();
         tileOverlays = MockTileOverlaysController();
+        groundOverlays = MockGroundOverlaysController();
         map = gmaps.Map(createDivElement());
       });
 
@@ -273,6 +278,7 @@ void main() {
             markers: markers,
             polygons: polygons,
             polylines: polylines,
+            groundOverlays: groundOverlays,
           )
           ..init();
 
@@ -313,6 +319,7 @@ void main() {
             polygons: polygons,
             polylines: polylines,
             tileOverlays: tileOverlays,
+            groundOverlays: groundOverlays,
           )
           ..init();
 
@@ -322,6 +329,7 @@ void main() {
         verify(polygons.bindToMap(mapId, map));
         verify(polylines.bindToMap(mapId, map));
         verify(tileOverlays.bindToMap(mapId, map));
+        verify(groundOverlays.bindToMap(mapId, map));
       });
 
       testWidgets('renders initial geometry', (WidgetTester tester) async {
@@ -381,6 +389,22 @@ void main() {
           ])
         }, tileOverlays: <TileOverlay>{
           const TileOverlay(tileOverlayId: TileOverlayId('overlay-1'))
+        }, groundOverlays: <GroundOverlay>{
+          GroundOverlay.fromBounds(
+            groundOverlayId: const GroundOverlayId('bounds_1'),
+            bounds: LatLngBounds(
+              northeast: const LatLng(100, 0),
+              southwest: const LatLng(0, 100),
+            ),
+            image: AssetMapBitmap(
+              'assets/red_square.png',
+              imagePixelRatio: 1.0,
+              bitmapScaling: MapBitmapScaling.none,
+            ),
+            transparency: 0.7,
+            bearing: 10,
+            zIndex: 10,
+          )
         });
 
         controller = createController(mapObjects: mapObjects)
@@ -391,6 +415,7 @@ void main() {
             polygons: polygons,
             polylines: polylines,
             tileOverlays: tileOverlays,
+            groundOverlays: groundOverlays,
           )
           ..init();
 
@@ -400,6 +425,7 @@ void main() {
         verify(polygons.addPolygons(mapObjects.polygons));
         verify(polylines.addPolylines(mapObjects.polylines));
         verify(tileOverlays.addTileOverlays(mapObjects.tileOverlays));
+        verify(groundOverlays.addGroundOverlays(mapObjects.groundOverlays));
       });
 
       group('Initialization options', () {
@@ -409,7 +435,7 @@ void main() {
               mapConfiguration: const MapConfiguration(
             mapType: MapType.satellite,
             zoomControlsEnabled: true,
-            mapId: _kCloudMapId,
+            mapId: _kMapId,
             fortyFiveDegreeImageryEnabled: false,
           ));
           controller.debugSetOverrides(
@@ -423,7 +449,7 @@ void main() {
           expect(capturedOptions, isNotNull);
           expect(capturedOptions!.mapTypeId, gmaps.MapTypeId.SATELLITE);
           expect(capturedOptions!.zoomControl, true);
-          expect(capturedOptions!.mapId, _kCloudMapId);
+          expect(capturedOptions!.mapId, _kMapId);
           expect(capturedOptions!.gestureHandling, 'auto',
               reason:
                   'by default the map handles zoom/pan gestures internally');
@@ -887,6 +913,62 @@ void main() {
         verify(mock.changeTileOverlays(<TileOverlay>{
           const TileOverlay(
               tileOverlayId: TileOverlayId('to-be-updated'), visible: false),
+        }));
+      });
+
+      testWidgets('updateGroundOverlays', (WidgetTester tester) async {
+        final MockGroundOverlaysController mock =
+            MockGroundOverlaysController();
+        controller = createController()
+          ..debugSetOverrides(groundOverlays: mock);
+
+        final LatLngBounds bounds = LatLngBounds(
+          northeast: const LatLng(100, 0),
+          southwest: const LatLng(0, 100),
+        );
+        const LatLng position = LatLng(50, 50);
+        final AssetMapBitmap image = AssetMapBitmap(
+          'assets/red_square.png',
+          imagePixelRatio: 1.0,
+          bitmapScaling: MapBitmapScaling.none,
+        );
+
+        final GroundOverlay groundOverlayToBeUpdated = GroundOverlay.fromBounds(
+          groundOverlayId: const GroundOverlayId('to-be-updated'),
+          image: image,
+          bounds: bounds,
+        );
+        final GroundOverlay groundOverlayToBeRemoved =
+            GroundOverlay.fromPosition(
+          groundOverlayId: const GroundOverlayId('to-be-removed'),
+          image: image,
+          position: position,
+        );
+        final GroundOverlay groundOverlayToBeAdded = GroundOverlay.fromPosition(
+          groundOverlayId: const GroundOverlayId('to-be-added'),
+          image: image,
+          position: position,
+        );
+
+        final Set<GroundOverlay> previous = <GroundOverlay>{
+          groundOverlayToBeUpdated,
+          groundOverlayToBeRemoved
+        };
+
+        final Set<GroundOverlay> current = <GroundOverlay>{
+          groundOverlayToBeUpdated.copyWith(visibleParam: false),
+          groundOverlayToBeAdded
+        };
+
+        controller
+            .updateGroundOverlays(GroundOverlayUpdates.from(previous, current));
+
+        verify(mock.removeGroundOverlays(<GroundOverlayId>{
+          groundOverlayToBeRemoved.groundOverlayId,
+        }));
+        verify(mock.addGroundOverlays(<GroundOverlay>{groundOverlayToBeAdded}));
+        verify(mock.changeGroundOverlays(<GroundOverlay>{
+          groundOverlayToBeUpdated.copyWith(visibleParam: false),
         }));
       });
 
